@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rank Whatever</title>
+<meta name="description" content="Make a tier list of anything, S to F. Add names or pictures, drag them around, and send the link to your friends.">
+<meta property="og:title" content="Rank Whatever">
+<meta property="og:description" content="Make a tier list of anything. S to F. Share it with friends.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23ff7f7f'/><text x='50' y='73' font-size='66' font-family='Arial Black,Arial' font-weight='900' text-anchor='middle' fill='%23111'>S</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --bg:#0e0e11; --panel:#17171c; --row:#1d1d24; --line:#2b2b35; --text:#f3f3f5; --muted:#8e8e9c;
+  --accent:#ffdf7f; --item:#292932; --item-line:#3a3a46; --size:72px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:'Bricolage Grotesque',system-ui,-apple-system,sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased}
+body.dragging{user-select:none;-webkit-user-select:none;cursor:grabbing}
+button,input,textarea{font:inherit;color:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 110px}
+
+/* header */
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px;letter-spacing:-.02em;white-space:nowrap}
+.mark{display:flex;gap:3px;align-items:flex-end}
+.mark span{width:7px;border-radius:2px}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn{background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:background .15s,border-color .15s,filter .15s;line-height:1.2;white-space:nowrap}
+.btn:hover{border-color:#474754;background:#1f1f27}
+.btn.primary{background:var(--accent);color:#16161a;border-color:transparent}
+.btn.primary:hover{filter:brightness(1.07);background:var(--accent)}
+.btn:disabled{opacity:.35;cursor:default}
+.btn svg{width:16px;height:16px;flex-shrink:0}
+.btn.ghosty{background:transparent}
+
+/* title */
+.title-input{width:100%;background:transparent;border:none;outline:none;font-size:clamp(26px,5vw,42px);font-weight:800;letter-spacing:-.03em;padding:4px 0 10px;border-radius:6px}
+.title-input::placeholder{color:#3d3d49}
+
+/* board */
+#board{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--row)}
+.tier{display:flex;min-height:calc(var(--size) + 16px);border-bottom:1px solid var(--line);background:var(--row)}
+.tier:last-child{border-bottom:none}
+.tier-label{width:100px;flex-shrink:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#141418;font-weight:800;font-size:30px;padding:6px;outline:none;word-break:break-word;line-height:1.1;cursor:text}
+.tier-label.long{font-size:15px}
+.tier-label:focus{box-shadow:inset 0 0 0 3px rgba(0,0,0,.35)}
+.drop{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:8px;min-height:calc(var(--size) + 16px);transition:background .12s;min-width:0}
+.drop.over{background:rgba(255,255,255,.06)}
+.tier-ctrl{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 6px;background:var(--panel);border-left:1px solid var(--line)}
+.icon-btn{width:26px;height:22px;border-radius:6px;border:none;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;padding:0}
+.icon-btn:hover{background:#2a2a34;color:var(--text)}
+.swatch{width:20px;height:20px;border-radius:50%;border:2px solid #3a3a46;padding:0;cursor:pointer;overflow:hidden;background:none;-webkit-appearance:none;appearance:none}
+.swatch::-webkit-color-swatch-wrapper{padding:0}
+.swatch::-webkit-color-swatch{border:none;border-radius:50%}
+.swatch::-moz-color-swatch{border:none;border-radius:50%}
+.add-tier{margin-top:8px;width:100%;justify-content:center;border-style:dashed;color:var(--muted)}
+
+/* items */
+.item{position:relative;background:var(--item);border:1px solid var(--item-line);border-radius:9px;height:var(--size);min-width:var(--size);max-width:190px;display:flex;align-items:center;justify-content:center;padding:6px 12px;font-weight:600;font-size:15px;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;text-align:center;line-height:1.12;overflow-wrap:anywhere}
+.item .txt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.item.img{padding:0;width:var(--size);background:#000;overflow:hidden}
+.item.img img{width:100%;height:100%;object-fit:cover;pointer-events:none;display:block;-webkit-user-drag:none}
+.item.img .cap{position:absolute;left:0;right:0;bottom:0;font-size:10.5px;font-weight:600;padding:10px 4px 3px;background:linear-gradient(transparent,rgba(0,0,0,.85));color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item:hover{border-color:#55556a}
+.item.placeholder{opacity:.25}
+.item .x{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.7);border:none;color:#fff;font-size:10px;display:none;align-items:center;justify-content:center;cursor:pointer;padding:0;line-height:1}
+.item:hover .x{display:flex}
+@media (hover:none){.item .x{display:none!important}}
+.ghost{position:fixed;z-index:1000;pointer-events:none;transform:rotate(-3deg) scale(1.07);box-shadow:0 14px 34px rgba(0,0,0,.55);margin:0;opacity:.95}
+.ghost .x{display:none!important}
+
+/* pool */
+.pool-panel{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.pool-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+.pool-head h2{margin:0;font-size:17px;font-weight:800;letter-spacing:-.01em}
+.pool-head .count{color:var(--muted);font-weight:400;font-size:14px;margin-left:4px}
+.drop.pool{background:#121216;border:1px dashed #33333f;border-radius:10px;min-height:calc(var(--size) + 18px)}
+.drop.pool:empty::before{content:"Everything's ranked. Add more below 👇";color:#555563;margin:auto;font-size:14px}
+.add-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.add-row textarea{flex:1 1 280px;min-width:0;resize:none;background:#111115;border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none;font-size:15px;line-height:1.35;max-height:140px}
+.add-row textarea:focus{border-color:#5a5a6c}
+.hint{color:var(--muted);font-size:13px;margin:10px 2px 0;line-height:1.45}
+.starters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.starters .lbl{color:var(--muted);font-size:13px;margin-right:2px}
+.chip{background:#202028;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;cursor:pointer;font-weight:600}
+.chip:hover{border-color:#50505e}
+
+/* trash, overlay, toast */
+#trash{position:fixed;left:50%;bottom:18px;transform:translate(-50%,140%);background:#2a1618;border:2px dashed #ff6b6b;color:#ff8f8f;padding:14px 26px;border-radius:14px;font-weight:700;z-index:900;transition:transform .18s,background .12s;display:flex;align-items:center;gap:8px}
+body.dragging #trash{transform:translate(-50%,0)}
+#trash.hot{background:#ff6b6b;color:#1a0b0c}
+#dropOverlay{position:fixed;inset:0;background:rgba(14,14,17,.85);display:none;align-items:center;justify-content:center;z-index:1200;font-size:24px;font-weight:800;border:4px dashed var(--accent);pointer-events:none}
+#dropOverlay.on{display:flex}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160%);background:#f3f3f5;color:#141418;padding:11px 18px;border-radius:12px;font-weight:600;font-size:14px;z-index:1300;transition:transform .2s;max-width:calc(100% - 32px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+#toast.on{transform:translate(-50%,0)}
+body.dragging #toast{display:none}
+footer{text-align:center;color:#4a4a57;font-size:12px;margin-top:28px}
+
+/* export-only bits (added in the cloned page) */
+.export-title{font-size:40px;font-weight:800;letter-spacing:-.03em;padding:4px 0 12px;color:var(--text)}
+.export-mark{text-align:right;color:#55556a;font-size:13px;font-weight:600;padding-top:8px}
+
+@media (max-width:640px){
+  :root{--size:58px}
+  .tier-label{width:62px;font-size:22px}
+  .tier-label.long{font-size:12px}
+  .item{font-size:13px;padding:4px 8px;max-width:140px}
+  .drop{gap:5px;padding:6px}
+  .tier-ctrl{padding:2px 3px}
+  .icon-btn{width:22px}
+  .btn .lbl-long{display:none}
+  .actions .btn{padding:8px 10px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <div class="mark">
+        <span style="height:24px;background:#ff7f7f"></span><span style="height:20px;background:#ffbf7f"></span><span style="height:16px;background:#ffdf7f"></span><span style="height:12px;background:#bfff7f"></span><span style="height:8px;background:#7fbfff"></span>
+      </div>
+      rank whatever
+    </div>
+    <div class="actions">
+      <button class="btn ghosty" id="undoBtn" title="Undo (Ctrl/⌘+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span class="lbl-long">Undo</span>
+      </button>
+      <button class="btn ghosty" id="resetBtn" title="Move everything back to Unranked"><span>Reset spots</span></button>
+      <button class="btn ghosty" id="newBtn" title="Start a brand new list"><span>New list</span></button>
+      <button class="btn" id="pngBtn" title="Download as an image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span class="lbl-long">Save image</span>
+      </button>
+      <button class="btn primary" id="shareBtn" title="Copy a link to this exact list">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>Share link
+      </button>
+    </div>
+  </header>
+
+  <div id="capture">
+    <input id="title" class="title-input" placeholder="Name your list…" maxlength="100" autocomplete="off">
+    <div id="board"></div>
+  </div>
+  <button class="btn add-tier" id="addTierBtn">+ Add a tier</button>
+
+  <section class="pool-panel">
+    <div class="pool-head">
+      <h2>Unranked <span class="count" id="poolCount"></span></h2>
+      <label class="btn" for="fileInput" style="padding:6px 10px;font-size:13px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L6 21"/></svg>Add images
+      </label>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    </div>
+    <div class="drop pool" data-zone="pool" id="pool"></div>
+    <div class="add-row">
+      <textarea id="nameInput" rows="1" placeholder="Type a name and hit Enter (paste a list to add a bunch at once)"></textarea>
+      <button class="btn primary" id="addBtn">Add</button>
+    </div>
+    <p class="hint">Drag anything into a tier. Double-click to rename, drag to 🗑 to delete. Click a tier's letter to rename it. Drop pictures onto the page or paste them with Ctrl/⌘+V.</p>
+    <div class="starters" id="starters"><span class="lbl">Need an idea?</span></div>
+  </section>
+
+  <footer>rank whatever · your list saves automatically in this browser</footer>
+</div>
+
+<div id="trash">🗑 Drop here to delete</div>
+<div id="dropOverlay">Drop images to add them</div>
+<div id="toast"></div>
+
+<script>
+(() => {
+const DEFAULT_TIERS = [['S','#ff7f7f'],['A','#ffbf7f'],['B','#ffdf7f'],['C','#ffff7f'],['D','#bfff7f'],['F','#7fbfff']];
+const PALETTE = ['#ff7f7f','#ffbf7f','#ffdf7f','#ffff7f','#bfff7f','#7fff7f','#7fffff','#7fbfff','#7f7fff','#ff7fff','#bf7fbf','#cfcfcf'];
+const STARTERS = {
+  'Fast food': ["McDonald's","Chick-fil-A","Wendy's","Taco Bell","Burger King","Chipotle","Subway","Popeyes","Five Guys","Sonic","Arby's","KFC","In-N-Out","Panda Express"],
+  'Pizza toppings': ['Pepperoni','Sausage','Mushrooms','Pineapple','Olives','Onions','Bacon','Green peppers','Anchovies','Extra cheese','Jalapeños','Ham','Chicken','Spinach'],
+  'Cereal': ['Cinnamon Toast Crunch','Frosted Flakes','Lucky Charms','Cheerios','Froot Loops','Cocoa Puffs',"Reese's Puffs",'Honey Nut Cheerios','Raisin Bran',"Cap'n Crunch",'Apple Jacks','Fruity Pebbles'],
+  'Candy': ["Reese's",'Kit Kat','Snickers','Skittles','Sour Patch Kids','M&Ms','Twix','Starburst','Airheads','Milky Way','Nerds','Swedish Fish','Candy corn'],
+  'Holidays': ['Christmas','Halloween','Thanksgiving','4th of July',"New Year's",'Easter',"Valentine's Day","St. Patrick's Day",'Your birthday','Labor Day','Memorial Day'],
+  'School subjects': ['Math','English','History','Biology','Chemistry','Physics','Spanish','Art','Gym','Music','Computer Science','Lunch'],
+  'Chores': ['Dishes','Laundry','Vacuuming','Taking out trash','Making the bed','Mowing the lawn','Cleaning the bathroom','Folding clothes','Walking the dog','Grocery shopping']
+};
+const STORE = 'rankwhatever:v1';
+const $ = id => document.getElementById(id);
+const uid = () => Math.random().toString(36).slice(2, 9);
+const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+
+let state;
+let undoStack = [];
+
+function freshState(title = '', names = []) {
+  const items = {}, pool = [];
+  names.forEach(n => { const id = uid(); items[id] = { t: n }; pool.push(id); });
+  return { title, tiers: DEFAULT_TIERS.map(([l, c]) => ({ id: uid(), l, c, items: [] })), pool, items };
+}
+
+function clean(s) {
+  if (!s || typeof s !== 'object' || !Array.isArray(s.tiers) || !s.items || typeof s.items !== 'object') return null;
+  const items = {};
+  for (const [id, v] of Object.entries(s.items)) {
+    if (!v || typeof v !== 'object') continue;
+    const it = { t: String(v.t ?? '').slice(0, 80) };
+    if (typeof v.i === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(v.i)) it.i = v.i;
+    if (it.t || it.i) items[id] = it;
+  }
+  const seen = new Set();
+  const take = arr => (Array.isArray(arr) ? arr : []).filter(id => items[id] && !seen.has(id) && seen.add(id));
+  const tierIds = new Set();
+  const tiers = s.tiers.slice(0, 30).map(t => {
+    let id = String((t && t.id) || uid());
+    if (tierIds.has(id) || id === 'pool') id = uid();
+    tierIds.add(id);
+    return { id, l: String(t?.l ?? '?').slice(0, 40) || '?', c: /^#[0-9a-f]{6}$/i.test(t?.c) ? t.c : '#cfcfcf', items: take(t?.items) };
+  });
+  if (!tiers.length) return null;
+  const pool = take(s.pool);
+  Object.keys(items).forEach(id => { if (!seen.has(id)) pool.push(id); });
+  return { title: String(s.title || '').slice(0, 100), tiers, pool, items };
+}
+
+/* ---------- persistence & history ---------- */
+let saveWarned = false;
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); }
+  catch (e) {
+    if (!saveWarned) { toast("Couldn't autosave (probably too many big pictures). Share link still works."); saveWarned = true; }
+  }
+}
+function snapshot() {
+  undoStack.push(JSON.stringify(state));
+  if (undoStack.length > 60) undoStack.shift();
+}
+function undo() {
+  if (!undoStack.length) return;
+  state = JSON.parse(undoStack.pop());
+  save(); render();
+}
+function commit(fn) { snapshot(); fn(); save(); render(); }
+
+/* ---------- helpers ---------- */
+function zoneList(z) { return z === 'pool' ? state.pool : (state.tiers.find(t => t.id === z) || {}).items; }
+function setZoneList(z, list) {
+  if (z === 'pool') state.pool = list;
+  else { const t = state.tiers.find(t => t.id === z); if (t) t.items = list; }
+}
+function removeFromAll(id) {
+  state.pool = state.pool.filter(x => x !== id);
+  state.tiers.forEach(t => t.items = t.items.filter(x => x !== id));
+}
+function itemCount() { return Object.keys(state.items).length; }
+
+let toastTimer;
+function toast(msg, ms = 2600) {
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('on'), ms);
+}
+
+/* ---------- rendering ---------- */
+function itemEl(id) {
+  const it = state.items[id];
+  const d = el('div', 'item' + (it.i ? ' img' : ''));
+  d.dataset.id = id;
+  d.title = it.t || '';
+  if (it.i) {
+    const im = new Image(); im.src = it.i; im.alt = it.t || ''; im.draggable = false;
+    d.append(im);
+    if (it.t) { const c = el('div', 'cap'); c.textContent = it.t; d.append(c); }
+  } else {
+    const s = el('span', 'txt'); s.textContent = it.t; d.append(s);
+  }
+  const x = el('button', 'x'); x.textContent = '✕'; x.title = 'Delete';
+  x.addEventListener('pointerdown', e => e.stopPropagation());
+  x.addEventListener('click', e => { e.stopPropagation(); deleteItem(id); });
+  d.append(x);
+  d.addEventListener('pointerdown', startDrag);
+  d.addEventListener('dblclick', () => renameItem(id));
+  return d;
+}
+
+function render() {
+  const titleEl = $('title');
+  if (document.activeElement !== titleEl) titleEl.value = state.title || '';
+  const board = $('board');
+  board.innerHTML = '';
+  state.tiers.forEach((t, idx) => {
+    const row = el('div', 'tier');
+    const lab = el('div', 'tier-label' + (t.l.length > 3 ? ' long' : ''));
+    lab.contentEditable = 'true'; lab.spellcheck = false;
+    lab.textContent = t.l; lab.style.background = t.c;
+    lab.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); lab.blur(); } });
+    lab.addEventListener('blur', () => {
+      const v = lab.textContent.trim().slice(0, 40) || '?';
+      lab.textContent = v;
+      if (v !== t.l) { snapshot(); t.l = v; save(); lab.classList.toggle('long', v.length > 3); $('undoBtn').disabled = false; }
+    });
+
+    const drop = el('div', 'drop'); drop.dataset.zone = t.id;
+    t.items.forEach(id => drop.append(itemEl(id)));
+
+    const ctrl = el('div', 'tier-ctrl');
+    const sw = el('input', 'swatch'); sw.type = 'color'; sw.value = t.c; sw.title = 'Tier color';
+    sw.addEventListener('input', () => { lab.style.background = sw.value; });
+    sw.addEventListener('change', () => { snapshot(); t.c = sw.value; save(); $('undoBtn').disabled = false; });
+    const up = el('button', 'icon-btn'); up.textContent = '▲'; up.title = 'Move tier up'; up.disabled = idx === 0;
+    up.onclick = () => commit(() => { const a = state.tiers; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; });
+    const dn = el('button', 'icon-btn'); dn.textContent = '▼'; dn.title = 'Move tier down'; dn.disabled = idx === state.tiers.length - 1;
+    dn.onclick = () => commit(() => { const a = state.tiers; [a[idx + 1], a[idx]] = [a[idx], a[idx + 1]]; });
+    const del = el('button', 'icon-btn'); del.textContent = '✕'; del.title = 'Delete tier (items go back to Unranked)';
+    del.onclick = () => {
+      if (state.tiers.length <= 1) { toast('You need at least one tier'); return; }
+      commit(() => { state.pool = [...t.items, ...state.pool]; state.tiers.splice(idx, 1); });
+      toast(`Deleted tier "${t.l}" (Undo to bring it back)`);
+    };
+    [up, dn].forEach(b => { if (b.disabled) b.style.opacity = .25; });
+    ctrl.append(sw, up, dn, del);
+
+    row.append(lab, drop, ctrl);
+    board.append(row);
+  });
+
+  const pool = $('pool');
+  pool.innerHTML = '';
+  state.pool.forEach(id => pool.append(itemEl(id)));
+  $('poolCount').textContent = state.pool.length ? `· ${state.pool.length}` : '';
+  $('undoBtn').disabled = !undoStack.length;
+}
+
+/* ---------- item actions ---------- */
+function deleteItem(id) {
+  commit(() => { removeFromAll(id); delete state.items[id]; });
+  toast('Deleted (Undo to bring it back)');
+}
+function renameItem(id) {
+  const it = state.items[id];
+  const v = prompt(it.i ? 'Caption for this picture (leave blank for none):' : 'Rename:', it.t || '');
+  if (v === null) return;
+  const nv = v.trim().slice(0, 80);
+  if (!nv && !it.i) { deleteItem(id); return; }
+  if (nv !== it.t) commit(() => { it.t = nv; });
+}
+function addNames(raw) {
+  const parts = raw.split(/\n|,|\t/).map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return 0;
+  commit(() => parts.forEach(p => { const id = uid(); state.items[id] = { t: p.slice(0, 80) }; state.pool.push(id); }));
+  return parts.length;
+}
+
+/* ---------- images ---------- */
+function readImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      const S = 160, w = im.naturalWidth, h = im.naturalHeight, side = Math.min(w, h);
+      const c = document.createElement('canvas'); c.width = c.height = S;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(im, (w - side) / 2, (h - side) / 2, side, side, 0, 0, S, S);
+      let data = c.toDataURL('image/webp', 0.8);
+      if (!data.startsWith('data:image/webp')) {
+        const c2 = document.createElement('canvas'); c2.width = c2.height = S;
+        const x = c2.getContext('2d'); x.fillStyle = '#292932'; x.fillRect(0, 0, S, S); x.drawImage(c, 0, 0);
+        data = c2.toDataURL('image/jpeg', 0.82);
+      }
+      URL.revokeObjectURL(url); resolve(data);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    im.src = url;
+  });
+}
+async function addFiles(files) {
+  const imgs = [...files].filter(f => f.type && f.type.startsWith('image/'));
+  if (!imgs.length) return;
+  const out = [];
+  for (const f of imgs) {
+    try {
+      let cap = (f.name || '').replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim().slice(0, 40);
+      if (/^(image|img|screenshot|photo)\b/i.test(cap) || /^[\d\s]+$/.test(cap)) cap = '';
+      out.push({ t: cap, i: await readImage(f) });
+    } catch (e) {}
+  }
+  if (!out.length) { toast("Couldn't read that image"); return; }
+  commit(() => out.forEach(it => { const id = uid(); state.items[id] = it; state.pool.push(id); }));
+  toast(out.length === 1 ? 'Picture added. Double-click it to add a caption' : `${out.length} pictures added`);
+}
+
+/* ---------- drag & drop (works with mouse and touch) ---------- */
+let drag = null;
+const trash = $('trash');
+
+function startDrag(e) {
+  if (e.button !== undefined && e.button !== 0) return;
+  const node = e.currentTarget;
+  try { node.releasePointerCapture(e.pointerId); } catch (_) {}
+  const zone = node.parentNode;
+  drag = {
+    el: node, id: node.dataset.id, sx: e.clientX, sy: e.clientY, started: false, ghost: null, ox: 0, oy: 0, over: null,
+    fromZone: zone.dataset.zone, fromIdx: [...zone.querySelectorAll(':scope > .item')].indexOf(node)
+  };
+  window.addEventListener('pointermove', onMove, { passive: false });
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+}
+
+function onMove(e) {
+  if (!drag) return;
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5) return;
+    drag.started = true;
+    const r = drag.el.getBoundingClientRect();
+    drag.ox = drag.sx - r.left; drag.oy = drag.sy - r.top;
+    const g = drag.el.cloneNode(true);
+    g.classList.add('ghost'); g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+    document.body.append(g); drag.ghost = g;
+    drag.el.classList.add('placeholder');
+    document.body.classList.add('dragging');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+  e.preventDefault();
+  drag.ghost.style.left = (e.clientX - drag.ox) + 'px';
+  drag.ghost.style.top = (e.clientY - drag.oy) + 'px';
+
+  const edge = 70;
+  if (e.clientY < edge) window.scrollBy(0, -14);
+  else if (e.clientY > innerHeight - edge) window.scrollBy(0, 14);
+
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  trash.classList.toggle('hot', !!(target && target.closest('#trash')));
+  const zone = target && target.closest('.drop');
+  if (drag.over && drag.over !== zone) drag.over.classList.remove('over');
+  drag.over = zone;
+  if (!zone) return;
+  zone.classList.add('over');
+
+  const kids = [...zone.querySelectorAll(':scope > .item')].filter(k => k !== drag.el);
+  let before = null;
+  for (const k of kids) {
+    const r = k.getBoundingClientRect();
+    if (e.clientY < r.top) { before = k; break; }
+    if (e.clientY <= r.bottom && e.clientX < r.left + r.width / 2) { before = k; break; }
+  }
+  if (before) { if (drag.el.nextElementSibling !== before) zone.insertBefore(drag.el, before); }
+  else if (zone.lastElementChild !== drag.el) zone.append(drag.el);
+}
+
+function onUp(e) {
+  window.removeEventListener('pointermove', onMove);
+  window.removeEventListener('pointerup', onUp);
+  window.removeEventListener('pointercancel', onUp);
+  const d = drag; drag = null;
+  if (!d || !d.started) return;
+  d.ghost.remove();
+  d.el.classList.remove('placeholder');
+  document.body.classList.remove('dragging');
+  if (d.over) d.over.classList.remove('over');
+  const wasTrash = trash.classList.contains('hot');
+  trash.classList.remove('hot');
+  if (e.type !== 'pointercancel' && wasTrash) { deleteItem(d.id); return; }
+
+  const zone = d.el.parentNode;
+  if (e.type === 'pointercancel' || !zone || !zone.dataset.zone) { render(); return; }
+  const order = [...zone.querySelectorAll(':scope > .item')].map(k => k.dataset.id);
+  if (zone.dataset.zone === d.fromZone && order.indexOf(d.id) === d.fromIdx) return;
+  commit(() => { removeFromAll(d.id); setZoneList(zone.dataset.zone, order); });
+}
+
+/* ---------- share / export ---------- */
+async function share() {
+  if (!window.LZString) { toast('Sharing needs an internet connection'); return; }
+  const packed = LZString.compressToEncodedURIComponent(JSON.stringify(state));
+  const url = location.origin + location.pathname + '#b=' + packed;
+  const hasPics = Object.values(state.items).some(it => it.i);
+  const msg = hasPics && url.length > 20000
+    ? 'Link copied! It\'s long because of the pictures. If a chat app cuts it off, send the image instead.'
+    : 'Link copied! Send it to your friends.';
+  const touch = matchMedia('(hover:none)').matches;
+  if (touch && navigator.share) {
+    try { await navigator.share({ title: state.title || 'My tier list', url }); return; } catch (err) { if (err && err.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(url); toast(msg, 3800); }
+  catch (_) { prompt('Copy this link:', url); }
+}
+
+async function exportPng() {
+  if (!window.html2canvas) { toast('Saving an image needs an internet connection'); return; }
+  toast('Making your image…', 6000);
+  try {
+    const canvas = await html2canvas($('capture'), {
+      backgroundColor: '#0e0e11', scale: 2, logging: false,
+      onclone: doc => {
+        const cap = doc.getElementById('capture');
+        cap.style.padding = '24px'; cap.style.width = Math.max(720, $('capture').offsetWidth + 48) + 'px'; cap.style.background = '#0e0e11';
+        const inp = doc.getElementById('title');
+        const h = doc.createElement('div'); h.className = 'export-title'; h.textContent = state.title || 'My tier list';
+        inp.replaceWith(h);
+        doc.querySelectorAll('.tier-ctrl, .item .x').forEach(n => n.remove());
+        doc.querySelectorAll('.placeholder').forEach(n => n.classList.remove('placeholder'));
+        const m = doc.createElement('div'); m.className = 'export-mark'; m.textContent = 'made on rank whatever';
+        cap.append(m);
+      }
+    });
+    const name = (state.title || 'tier-list').toLowerCase().replace(/[^\w\s-]+/g, '').trim().replace(/\s+/g, '-') || 'tier-list';
+    canvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name + '.png';
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast('Image saved!');
+    }, 'image/png');
+  } catch (err) { toast("Couldn't make the image, sorry"); }
+}
+
+/* ---------- wiring ---------- */
+function init() {
+  let loaded = null;
+  try { const raw = localStorage.getItem(STORE); if (raw) loaded = clean(JSON.parse(raw)); } catch (_) {}
+  state = loaded || freshState();
+
+  const m = location.hash.match(/^#b=(.+)$/);
+  if (m && window.LZString) {
+    try {
+      const shared = clean(JSON.parse(LZString.decompressFromEncodedURIComponent(m[1])));
+      if (shared) {
+        if (itemCount()) snapshot();
+        state = shared; save();
+        setTimeout(() => toast(undoStack.length ? 'Opened a shared list. Rearrange it your way! (Undo gets your old one back)' : 'Opened a shared list. Rearrange it your way!', 4500), 300);
+      }
+    } catch (_) { setTimeout(() => toast("That share link looks broken"), 300); }
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  render();
+
+  const titleEl = $('title');
+  let titleBefore = null;
+  titleEl.addEventListener('focus', () => { titleBefore = JSON.stringify(state); });
+  titleEl.addEventListener('input', () => { state.title = titleEl.value; save(); });
+  titleEl.addEventListener('change', () => {
+    if (titleBefore && JSON.parse(titleBefore).title !== state.title) { undoStack.push(titleBefore); $('undoBtn').disabled = false; }
+  });
+  titleEl.addEventListener('keydown', e => { if (e.key === 'Enter') titleEl.blur(); });
+
+  const input = $('nameInput');
+  const submit = () => {
+    const n = addNames(input.value);
+    if (n) { input.value = ''; autosize(); if (n > 1) toast(`Added ${n} things`); }
+    input.focus();
+  };
+  const autosize = () => { input.style.height = 'auto'; input.style.height = Math.min(140, input.scrollHeight + 2) + 'px'; };
+  input.addEventListener('input', autosize);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } });
+  $('addBtn').onclick = submit;
+
+  $('fileInput').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+
+  $('addTierBtn').onclick = () => commit(() => {
+    const used = new Set(state.tiers.map(t => t.c));
+    const c = PALETTE.find(p => !used.has(p)) || PALETTE[state.tiers.length % PALETTE.length];
+    state.tiers.push({ id: uid(), l: 'New', c, items: [] });
+  });
+  $('undoBtn').onclick = undo;
+  $('resetBtn').onclick = () => {
+    if (!state.tiers.some(t => t.items.length)) { toast('Nothing is ranked yet'); return; }
+    commit(() => { state.tiers.forEach(t => { state.pool.push(...t.items); t.items = []; }); });
+    toast('Everything moved back to Unranked');
+  };
+  $('newBtn').onclick = () => {
+    if (itemCount() && !confirm('Start a new list? (You can still Undo)')) return;
+    commit(() => { state = freshState(); });
+    $('title').focus();
+  };
+  $('shareBtn').onclick = share;
+  $('pngBtn').onclick = exportPng;
+
+  const starters = $('starters');
+  Object.keys(STARTERS).forEach(name => {
+    const b = el('button', 'chip'); b.textContent = name;
+    b.onclick = () => {
+      commit(() => { state = freshState(name, STARTERS[name]); });
+      toast(undoStack.length > 1 ? 'Starter loaded (Undo gets your old list back)' : 'Starter loaded. Start dragging!');
+    };
+    starters.append(b);
+  });
+
+  document.addEventListener('keydown', e => {
+    const typing = e.target.closest('input, textarea, [contenteditable="true"]');
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undo(); }
+  });
+
+  document.addEventListener('paste', e => {
+    const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
+    if (files.length) { e.preventDefault(); addFiles(files); }
+  });
+
+  const overlay = $('dropOverlay');
+  let depth = 0;
+  const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); depth++; overlay.classList.add('on'); });
+  window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth) overlay.classList.remove('on'); });
+  window.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); depth = 0; overlay.classList.remove('on');
+    addFiles(e.dataTransfer.files);
+  });
+}
+
+init();
+})();
+</script>
+</body>
+</html>
