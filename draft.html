@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Snake Draft · Rank Whatever</title>
+<meta name="description" content="Start a snake draft, send your friends the link, and take turns picking.">
+<meta property="og:title" content="Snake Draft · Rank Whatever">
+<meta property="og:description" content="Join the draft and take turns picking.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23bfff7f'/><text x='50' y='70' font-size='60' text-anchor='middle'>🐍</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<style>
+:root{
+  --bg:#0e0e11; --panel:#17171c; --row:#1d1d24; --line:#2b2b35; --text:#f3f3f5; --muted:#8e8e9c;
+  --accent:#ffdf7f; --go:#9dff7f; --item:#292932; --item-line:#3a3a46;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:'Bricolage Grotesque',system-ui,-apple-system,sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:inherit}
+[hidden]{display:none!important}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 120px}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px;letter-spacing:-.02em;white-space:nowrap;text-decoration:none}
+.mark{display:flex;gap:3px;align-items:flex-end}
+.mark span{width:7px;border-radius:2px}
+.btn{background:var(--panel);border:1px solid var(--line);padding:8px 13px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,border-color .15s,filter .15s;line-height:1.2;white-space:nowrap;text-decoration:none}
+.btn:hover{border-color:#474754;background:#1f1f27}
+.btn.primary{background:var(--accent);color:#16161a;border-color:transparent}
+.btn.primary:hover{filter:brightness(1.07);background:var(--accent)}
+.btn.go{background:var(--go);color:#122010;border-color:transparent}
+.btn.go:hover{filter:brightness(1.07);background:var(--go)}
+.btn.big{padding:12px 18px;font-size:16px;border-radius:12px}
+.btn:disabled{opacity:.4;cursor:default;filter:none}
+.btn.ghosty{background:transparent}
+
+h1.hero{font-size:clamp(34px,6vw,54px);font-weight:800;letter-spacing:-.035em;margin:6px 0 6px;line-height:1}
+.lead{color:var(--muted);font-size:17px;margin:0 0 22px;max-width:620px;line-height:1.45}
+.cards{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+.card h2{margin:0 0 14px;font-size:20px;font-weight:800;letter-spacing:-.02em}
+label.f{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px}
+label.f .n{font-weight:400}
+.inp{display:block;width:100%;margin-top:6px;background:#111115;border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none;font-size:15px;color:var(--text)}
+.inp:focus{border-color:#5a5a6c}
+textarea.inp{resize:vertical;line-height:1.4;min-height:150px}
+.code-inp{text-transform:uppercase;letter-spacing:.2em;font-weight:800;font-size:22px;text-align:center}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{background:#202028;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;cursor:pointer;font-weight:600}
+.chip:hover{border-color:#50505e}
+.muted{color:var(--muted)}
+.small{font-size:13px;line-height:1.45}
+.how{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.how ol{margin:6px 0 0;padding-left:20px;color:var(--muted);font-size:14px;line-height:1.6}
+
+/* room */
+.room-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.room-head h1{margin:0;font-size:clamp(26px,5vw,40px);font-weight:800;letter-spacing:-.03em;line-height:1.05;word-break:break-word}
+.room-sub{color:var(--muted);margin-top:6px;font-size:14px}
+.room-sub b{color:var(--text);letter-spacing:.14em;background:#22222b;border:1px solid var(--line);padding:2px 8px;border-radius:6px;font-size:15px}
+.lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.plist li{display:flex;align-items:center;gap:10px;background:var(--row);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.plist .num{width:26px;height:26px;border-radius:7px;background:var(--accent);color:#16161a;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.plist .pn{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-style:normal;font-size:11px;font-weight:700;background:#2c2c37;color:var(--muted);padding:2px 6px;border-radius:5px;margin-left:6px;text-transform:uppercase;letter-spacing:.04em}
+.tag.you{background:#27391f;color:var(--go)}
+.pc{display:flex;gap:2px}
+.icon-btn{width:28px;height:26px;border-radius:6px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;padding:0}
+.icon-btn:hover:not(:disabled){background:#2a2a34;color:var(--text)}
+.icon-btn:disabled{opacity:.25;cursor:default}
+.joinbox{background:#1d2a19;border:1px solid #3a5a2f;border-radius:14px;padding:14px;margin-bottom:16px}
+.joinbox .row .inp{flex:1 1 180px;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chips span{background:var(--item);border:1px solid var(--item-line);border-radius:7px;padding:4px 9px;font-size:13px;font-weight:600}
+.host-ctrl{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+select.inp{margin-top:6px}
+
+/* drafting */
+.banner{border-radius:14px;padding:14px 16px;background:var(--panel);border:1px solid var(--line);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.banner .who{font-size:clamp(19px,3.4vw,26px);font-weight:800;letter-spacing:-.02em}
+.banner .rp{color:var(--muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.banner .next{color:var(--muted);font-size:14px}
+.banner.mine{background:#1d2a19;border-color:#4d7a3d;animation:pulse 1.6s ease-in-out infinite}
+.banner.mine .who{color:var(--go)}
+.banner.done{background:#2a2617;border-color:#6b5c2c}
+.banner.done .who{color:var(--accent)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(157,255,127,0)}50%{box-shadow:0 0 0 5px rgba(157,255,127,.14)}}
+@media (prefers-reduced-motion:reduce){.banner.mine{animation:none}}
+.avail-panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px}
+.avail-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.avail-head h2{margin:0;font-size:17px;font-weight:800}
+.avail-head .inp{margin:0;max-width:260px;padding:8px 11px;font-size:14px}
+.avail{display:flex;flex-wrap:wrap;gap:6px;max-height:340px;overflow:auto;padding:2px}
+.name{background:var(--item);border:1px solid var(--item-line);border-radius:9px;padding:9px 13px;font-weight:600;font-size:15px;cursor:pointer;text-align:left;transition:transform .1s,border-color .1s,background .1s}
+.name:hover{border-color:#5a5a70}
+.name[aria-disabled="true"]{cursor:default;opacity:.75}
+.name[aria-disabled="true"]:hover{border-color:var(--item-line)}
+.name.sel{background:var(--go);color:#122010;border-color:transparent;transform:scale(1.04)}
+.empty{color:#555563;font-size:14px;padding:8px}
+.host-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-4px 0 16px;font-size:13px}
+
+.board-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--row)}
+table.board{border-collapse:collapse;width:100%}
+.board th,.board td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:0}
+.board tr:last-child td,.board tr:last-child th{border-bottom:none}
+.board th:last-child,.board td:last-child{border-right:none}
+.board thead th{background:var(--panel);padding:10px 12px;font-size:14px;font-weight:800;text-align:left;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.board thead th.me{color:var(--go)}
+.board thead th.clk{box-shadow:inset 0 -3px 0 var(--go)}
+.board th.rh{background:var(--panel);color:var(--muted);font-size:12px;font-weight:700;padding:0 10px;white-space:nowrap;text-align:left;width:52px}
+.board th.rh span{color:#5c5c6b}
+.cell{min-width:130px;max-width:190px;height:52px;padding:6px 10px!important;font-weight:600;font-size:14px;vertical-align:middle;line-height:1.2}
+.cell .pk{display:block;font-size:10.5px;color:#5c5c6b;font-weight:700;margin-bottom:1px}
+.cell.filled{background:#23232c}
+.cell.last{background:#2c2a1d}
+.cell.clock{background:#1d2a19;color:var(--go);font-size:13px}
+.cell.off{color:#3a3a46;text-align:center}
+
+.results{margin-top:18px}
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:10px}
+.team{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.team h3{margin:0 0 8px;font-size:16px;font-weight:800;display:flex;justify-content:space-between;gap:6px}
+.team ol{margin:0;padding-left:20px;font-size:14px;line-height:1.55;color:#d8d8de}
+.team.me{border-color:#4d7a3d}
+
+.missing{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
+.setup{background:#2a1c17;border:1px solid #7a4a3a;border-radius:14px;padding:14px 16px;margin-bottom:18px;font-size:14px;line-height:1.5}
+
+#pickBar{position:fixed;left:50%;bottom:16px;transform:translate(-50%,160%);background:#f3f3f5;color:#141418;border-radius:16px;padding:10px 10px 10px 18px;display:flex;align-items:center;gap:10px;z-index:900;box-shadow:0 14px 40px rgba(0,0,0,.5);transition:transform .2s,visibility .2s;max-width:calc(100% - 24px);visibility:hidden}
+#pickBar.on{transform:translate(-50%,0);visibility:visible}
+#pickBar .lbl{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pickBar .btn{flex-shrink:0}
+#pickBar .btn.ghosty{color:#141418;border-color:#d0d0d6}
+#pickBar .btn.ghosty:hover{background:#e4e4e8}
+#toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-180%);background:#f3f3f5;color:#141418;padding:11px 18px;border-radius:12px;font-weight:600;font-size:14px;z-index:1300;transition:transform .2s;max-width:calc(100% - 32px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+#toast.on{transform:translate(-50%,0)}
+
+@media (max-width:760px){
+  .cards,.lobby-grid{grid-template-columns:1fr}
+  .cell{min-width:104px;font-size:13px}
+  .avail-head .inp{max-width:none;flex:1 1 100%}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="index.html">
+      <div class="mark">
+        <span style="height:24px;background:#ff7f7f"></span><span style="height:20px;background:#ffbf7f"></span><span style="height:16px;background:#ffdf7f"></span><span style="height:12px;background:#bfff7f"></span><span style="height:8px;background:#7fbfff"></span>
+      </div>
+      rank whatever
+    </a>
+    <div class="row">
+      <a class="btn ghosty" href="index.html">Tier lists</a>
+      <a class="btn ghosty" href="draft.html" id="newDraftLink" hidden>New draft</a>
+    </div>
+  </header>
+
+  <div class="setup" id="setupNote" hidden>
+    <b>Draft mode isn't connected to its database yet.</b> In Vercel, open your project, go to the <b>Storage</b> tab, add <b>Upstash for Redis</b> (free), connect it to this project, then redeploy.
+  </div>
+
+  <!-- HOME -->
+  <section id="vHome">
+    <h1 class="hero">Snake draft 🐍</h1>
+    <p class="lead">Put in a list of names, send your friends the link, and take turns picking. The order flips every round, so whoever picks last in round 1 picks first in round 2.</p>
+    <div class="cards">
+      <div class="card">
+        <h2>Start a draft</h2>
+        <label class="f">Draft name
+          <input class="inp" id="cTitle" maxlength="100" placeholder="Best fast food of all time">
+        </label>
+        <label class="f">Your name
+          <input class="inp" id="cName" maxlength="24" placeholder="What your friends call you" autocomplete="nickname">
+        </label>
+        <label class="f">Names to draft <span class="n" id="cCount"></span>
+          <textarea class="inp" id="cItems" placeholder="One per line, or separated by commas"></textarea>
+        </label>
+        <div class="row" style="margin:-2px 0 16px">
+          <button class="btn" id="fromTier" type="button">Use names from my tier list</button>
+          <span class="muted small" id="starterLbl">or try:</span>
+          <span class="row" id="starters"></span>
+        </div>
+        <button class="btn primary big" id="createBtn" style="width:100%">Create draft room</button>
+      </div>
+      <div class="card">
+        <h2>Join a draft</h2>
+        <label class="f">Room code
+          <input class="inp code-inp" id="jCode" maxlength="8" placeholder="ABCDE" autocomplete="off" autocapitalize="characters">
+        </label>
+        <button class="btn primary" id="goJoin" style="width:100%">Go to room</button>
+        <p class="muted small">Or just open the invite link a friend sent you.</p>
+        <div class="how">
+          <b>How it works</b>
+          <ol>
+            <li>One person makes the room and adds the names.</li>
+            <li>Everyone opens the invite link and joins.</li>
+            <li>The host sets the order and hits Start.</li>
+            <li>Pick when it's your turn. Everyone sees picks live.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROOM -->
+  <section id="vRoom" hidden>
+    <div class="missing" id="missing" hidden>
+      <h2 style="margin-top:0">That room doesn't exist</h2>
+      <p class="muted">The code might be wrong, or the draft expired (rooms last 3 days).</p>
+      <a class="btn primary" href="draft.html">Start a new draft</a>
+    </div>
+
+    <div id="roomBody" hidden>
+      <div class="room-head">
+        <div>
+          <h1 id="rTitle"></h1>
+          <div class="room-sub">Room <b id="rCode"></b> · <span id="rMeta"></span></div>
+        </div>
+        <button class="btn primary" id="inviteBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>Copy invite link
+        </button>
+      </div>
+
+      <!-- lobby -->
+      <div id="lobby" hidden>
+        <div class="joinbox" id="joinBox" hidden>
+          <div style="font-weight:800;margin-bottom:8px">Join this draft</div>
+          <div class="row">
+            <input class="inp" id="jName" maxlength="24" placeholder="Your name" autocomplete="nickname">
+            <button class="btn go" id="joinBtn">Join</button>
+          </div>
+        </div>
+        <div class="lobby-grid">
+          <div class="card">
+            <h2 style="display:flex;justify-content:space-between;align-items:center;gap:8px">Draft order <span class="muted small" style="font-weight:400" id="orderHint"></span></h2>
+            <ul class="plist" id="lobbyPlayers"></ul>
+            <div class="host-ctrl" id="hostLobby" hidden>
+              <button class="btn" id="shuffleBtn">🎲 Randomize order</button>
+              <label class="f" style="margin:0">Rounds
+                <select class="inp" id="roundsSel"></select>
+              </label>
+              <button class="btn go big" id="startBtn">Start the draft</button>
+              <span class="muted small" id="startHint"></span>
+            </div>
+            <p class="muted small" id="waitMsg" hidden>Waiting for the host to start the draft…</p>
+          </div>
+          <div class="card">
+            <h2>Up for grabs <span class="muted small" style="font-weight:400" id="itemCount"></span></h2>
+            <div class="chips" id="lobbyItems"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- drafting + done -->
+      <div id="drafting" hidden>
+        <div class="banner" id="banner"></div>
+        <div class="host-tools" id="hostTools" hidden>
+          <span class="muted">Host:</span>
+          <button class="btn" id="undoPickBtn">↶ Undo last pick</button>
+          <span class="muted" id="hostHelp">You can pick for anyone who's away.</span>
+        </div>
+        <div class="avail-panel" id="availPanel">
+          <div class="avail-head">
+            <h2>Available <span class="muted small" style="font-weight:400" id="availCount"></span></h2>
+            <input class="inp" id="search" placeholder="Search…" autocomplete="off">
+          </div>
+          <div class="avail" id="avail"></div>
+        </div>
+        <div class="board-wrap"><table class="board" id="boardT"></table></div>
+        <div class="results" id="results" hidden>
+          <div class="row" style="justify-content:space-between">
+            <h2 style="margin:0;font-size:22px;font-weight:800">Teams</h2>
+            <div class="row">
+              <button class="btn" id="copyResults">Copy results</button>
+              <button class="btn primary" id="rankMine" hidden>Rank my team in a tier list</button>
+            </div>
+          </div>
+          <div class="teams" id="teams"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="pickBar"><span class="lbl" id="pickLbl"></span><button class="btn ghosty" id="pickCancel">Cancel</button><button class="btn go" id="pickGo">Draft it</button></div>
+<div id="toast"></div>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const LS = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (_) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
+};
+const cleanCode = c => String(c || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 8);
+const STARTERS = {
+  'Fast food': ["McDonald's","Chick-fil-A","Wendy's","Taco Bell","Burger King","Chipotle","Subway","Popeyes","Five Guys","Sonic","Arby's","KFC","In-N-Out","Panda Express","Raising Cane's","Wingstop"],
+  'Candy': ["Reese's",'Kit Kat','Snickers','Skittles','Sour Patch Kids','M&Ms','Twix','Starburst','Airheads','Milky Way','Nerds','Swedish Fish','Twizzlers','Butterfinger','Hershey Bar','Warheads'],
+  'Pizza toppings': ['Pepperoni','Sausage','Mushrooms','Pineapple','Olives','Onions','Bacon','Green peppers','Anchovies','Extra cheese','Jalapeños','Ham','Chicken','Spinach','Banana peppers','Meatball']
+};
+
+let S = null, CODE = null, ME = null, selected = null, pollTimer = null, busy = false;
+let lastPicks = -1, lastClock = undefined;
+
+/* ---------- helpers ---------- */
+let toastTimer;
+function toast(msg, ms = 2800) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), ms);
+}
+const isHost = () => !!(ME && ME.hostKey);
+const myId = () => ME && ME.playerId;
+const pname = id => { const p = S.players.find(p => p.id === id); return p ? p.name : '(left)'; };
+const itemName = id => { const it = S.items.find(i => i.id === id); return it ? it.t : '?'; };
+function clockAt(s, idx) {
+  const n = s.order.length; if (!n) return null;
+  const r = Math.floor(idx / n), pos = idx % n;
+  return r % 2 === 0 ? s.order[pos] : s.order[n - 1 - pos];
+}
+const totalPicks = s => s.rounds ? Math.min(s.rounds * s.order.length, s.items.length) : 0;
+const onClock = s => s.status === 'drafting' ? clockAt(s, s.picks.length) : null;
+const canPick = () => S && S.status === 'drafting' && !!ME && (onClock(S) === myId() || isHost());
+const parseItems = raw => raw.split(/\n|,|\t/).map(s => s.trim()).filter(Boolean);
+
+/* ---------- server ---------- */
+async function api(body) {
+  let r;
+  try {
+    r = await fetch('/api/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  } catch (_) { throw new Error("Can't reach the server. Check your internet."); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    if (j.error === 'NO_DB') { $('setupNote').hidden = false; throw new Error('Draft mode needs its database connected first.'); }
+    if (r.status === 404 && !j.error) throw new Error("The draft server isn't set up yet (api/draft.js is missing).");
+    throw new Error(j.error || 'Something went wrong');
+  }
+  return j;
+}
+async function act(body) {
+  if (busy) return null;
+  busy = true;
+  try {
+    const j = await api({ room: CODE, hostKey: ME && ME.hostKey, ...body });
+    if (j.state) applyState(j.state);
+    return j;
+  } catch (e) {
+    toast(e.message, 3500);
+    refresh();
+    return null;
+  } finally { busy = false; }
+}
+async function refresh() {
+  if (!CODE) return;
+  try {
+    const r = await fetch('/api/draft?room=' + encodeURIComponent(CODE), { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 404 && j.error) { showMissing(); return; }
+    if (!r.ok) {
+      if (j.error === 'NO_DB') $('setupNote').hidden = false;
+      else if (r.status === 404) toast("The draft server isn't set up yet (api/draft.js is missing).", 5000);
+      return;
+    }
+    applyState(j.state);
+  } catch (_) {}
+}
+function schedule() {
+  clearTimeout(pollTimer);
+  const ms = !S ? 2500 : S.status === 'done' ? 8000 : S.status === 'lobby' ? 2500 : 1800;
+  pollTimer = setTimeout(async () => { if (!document.hidden) await refresh(); schedule(); }, ms);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+
+function showMissing() {
+  clearTimeout(pollTimer);
+  $('vHome').hidden = true; $('vRoom').hidden = false;
+  $('missing').hidden = false; $('roomBody').hidden = true;
+}
+
+/* ---------- state ---------- */
+function applyState(s) {
+  if (S && S.code === s.code && s.v === S.v) return;
+  const prev = S;
+  S = s;
+  if (prev && prev.code === s.code) {
+    if (s.picks.length > lastPicks && lastPicks >= 0) {
+      const p = s.picks[s.picks.length - 1];
+      if (p.p !== myId()) toast(`${pname(p.p)} took ${itemName(p.i)}`);
+    }
+    if (prev.status === 'lobby' && s.status === 'drafting') toast('The draft started!');
+  }
+  const clk = onClock(s);
+  if (clk && clk === myId() && lastClock !== clk && s.picks.length !== lastPicks) {
+    setTimeout(() => toast("🟢 You're up! Pick a name.", 3500), lastPicks >= 0 ? 900 : 0);
+    if (navigator.vibrate) try { navigator.vibrate([120, 60, 120]); } catch (_) {}
+  }
+  lastClock = clk; lastPicks = s.picks.length;
+  render();
+}
+
+/* ---------- render ---------- */
+function render() {
+  const s = S;
+  $('vHome').hidden = true; $('vRoom').hidden = false;
+  $('missing').hidden = true; $('roomBody').hidden = false;
+  $('newDraftLink').hidden = false;
+  $('rTitle').textContent = s.title || 'Snake draft';
+  $('rCode').textContent = s.code;
+  $('rMeta').textContent = `${s.players.length} player${s.players.length === 1 ? '' : 's'} · ${s.items.length} names`;
+  const mine = onClock(s) === myId() && !!ME;
+  document.title = (mine ? '🟢 Your pick! · ' : '') + (s.title || 'Snake draft') + ' · Rank Whatever';
+  $('lobby').hidden = s.status !== 'lobby';
+  $('drafting').hidden = s.status === 'lobby';
+  if (s.status === 'lobby') renderLobby();
+  else { renderDraft(); renderBoard(); }
+  updatePickBar();
+}
+
+function renderLobby() {
+  const s = S, host = isHost(), n = s.order.length;
+  $('joinBox').hidden = !!ME;
+  $('orderHint').textContent = n ? `${n} joined` : '';
+  $('lobbyPlayers').innerHTML = s.order.map((id, i) => `
+    <li>
+      <span class="num">${i + 1}</span>
+      <span class="pn">${esc(pname(id))}${id === s.hostId ? '<em class="tag">host</em>' : ''}${id === myId() ? '<em class="tag you">you</em>' : ''}</span>
+      ${host ? `<span class="pc">
+        <button class="icon-btn" data-mv="${i}" data-d="-1" title="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button class="icon-btn" data-mv="${i}" data-d="1" title="Move down" ${i === n - 1 ? 'disabled' : ''}>▼</button>
+        ${id !== s.hostId ? `<button class="icon-btn" data-kick="${esc(id)}" title="Remove">✕</button>` : ''}
+      </span>` : ''}
+    </li>`).join('');
+  $('hostLobby').hidden = !host;
+  $('waitMsg').hidden = host || !ME;
+  if (host) {
+    const max = Math.max(1, Math.floor(s.items.length / Math.max(1, n)));
+    const sel = $('roundsSel');
+    if (sel.dataset.max !== String(max)) {
+      sel.innerHTML = `<option value="">As many as possible (${max})</option>` +
+        Array.from({ length: max }, (_, k) => `<option value="${k + 1}">${k + 1} round${k ? 's' : ''}</option>`).join('');
+      sel.dataset.max = String(max);
+    }
+    if (document.activeElement !== sel) sel.value = s.rounds && s.rounds <= max ? String(s.rounds) : '';
+    const tooFew = s.items.length < n;
+    $('startBtn').disabled = tooFew;
+    const rounds = s.rounds && s.rounds <= max ? s.rounds : max;
+    $('startHint').textContent = tooFew
+      ? `You need at least ${n} names for ${n} players.`
+      : n === 1 ? 'Only you so far. Send the invite link, or start solo to test it.'
+      : `${rounds} round${rounds === 1 ? '' : 's'} × ${n} players = ${rounds * n} picks.`;
+  }
+  $('itemCount').textContent = `· ${s.items.length}`;
+  $('lobbyItems').innerHTML = s.items.map(it => `<span>${esc(it.t)}</span>`).join('');
+}
+
+function renderDraft() {
+  const s = S, done = s.status === 'done', n = s.order.length, p = s.picks.length, total = totalPicks(s);
+  const cur = onClock(s), mine = !!ME && cur === myId(), host = isHost();
+  const banner = $('banner');
+  banner.className = 'banner' + (mine ? ' mine' : '') + (done ? ' done' : '');
+  if (done) {
+    banner.innerHTML = `<div><div class="rp">${total} picks · ${s.rounds} round${s.rounds === 1 ? '' : 's'}</div><div class="who">🏁 Draft complete!</div></div>`;
+  } else {
+    const next = p + 1 < total ? clockAt(s, p + 1) : null;
+    const who = mine ? "🟢 You're up! Pick a name." : `<b>${esc(pname(cur))}</b> is picking…`;
+    banner.innerHTML = `<div><div class="rp">Round ${Math.floor(p / n) + 1} of ${s.rounds} · Pick ${p + 1} of ${total}</div><div class="who">${who}</div></div>` +
+      `<div class="next">${!ME ? "You're watching. " : ''}${next ? `Next up: <b>${esc(next === myId() ? 'you' : pname(next))}</b>` : 'Last pick!'}</div>`;
+  }
+  $('hostTools').hidden = !host;
+  $('undoPickBtn').disabled = !p;
+  $('hostHelp').hidden = done;
+  $('availPanel').hidden = done;
+  if (!done) renderAvail();
+  $('results').hidden = !done;
+  if (done) renderResults();
+}
+
+function renderAvail() {
+  const q = $('search').value.trim().toLowerCase();
+  const taken = new Set(S.picks.map(x => x.i));
+  if (selected && taken.has(selected)) selected = null;
+  const list = S.items.filter(it => !taken.has(it.id) && (!q || it.t.toLowerCase().includes(q)));
+  const can = canPick();
+  $('availCount').textContent = `· ${S.items.length - taken.size} left`;
+  $('avail').innerHTML = list.map(it =>
+    `<button class="name${it.id === selected ? ' sel' : ''}" data-item="${esc(it.id)}"${can ? '' : ' aria-disabled="true"'}>${esc(it.t)}</button>`
+  ).join('') || `<div class="empty">${q ? 'No matches' : 'Nothing left'}</div>`;
+}
+
+function renderBoard() {
+  const s = S, n = s.order.length, total = totalPicks(s), clk = onClock(s);
+  let h = '<thead><tr><th class="rh"></th>' + s.order.map(id =>
+    `<th class="${id === myId() ? 'me' : ''}${id === clk ? ' clk' : ''}">${esc(pname(id))}${id === myId() ? ' (you)' : ''}</th>`).join('') + '</tr></thead><tbody>';
+  for (let r = 0; r < s.rounds; r++) {
+    h += `<tr><th class="rh">R${r + 1} <span>${r % 2 ? '←' : '→'}</span></th>`;
+    for (let c = 0; c < n; c++) {
+      const idx = r * n + (r % 2 === 0 ? c : n - 1 - c);
+      let cls = 'cell', inner;
+      if (idx < s.picks.length) {
+        cls += ' filled' + (idx === s.picks.length - 1 ? ' last' : '');
+        inner = `<span class="pk">#${idx + 1}</span>${esc(itemName(s.picks[idx].i))}`;
+      } else if (idx >= total) { cls += ' off'; inner = '—'; }
+      else if (idx === s.picks.length && s.status === 'drafting') { cls += ' clock'; inner = `<span class="pk">#${idx + 1}</span>on the clock`; }
+      else inner = `<span class="pk">#${idx + 1}</span>`;
+      h += `<td class="${cls}">${inner}</td>`;
+    }
+    h += '</tr>';
+  }
+  $('boardT').innerHTML = h + '</tbody>';
+  $('boardT').style.minWidth = (56 + n * (innerWidth < 760 ? 110 : 140)) + 'px';
+}
+
+function teamOf(id) { return S.picks.filter(p => p.p === id).map(p => itemName(p.i)); }
+function renderResults() {
+  $('teams').innerHTML = S.order.map(id => {
+    const picks = teamOf(id);
+    return `<div class="team${id === myId() ? ' me' : ''}"><h3><span>${esc(pname(id))}${id === myId() ? ' (you)' : ''}</span><span class="muted small">${picks.length}</span></h3><ol>${picks.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>`;
+  }).join('');
+  $('rankMine').hidden = !(ME && teamOf(myId()).length && window.LZString);
+}
+
+function updatePickBar() {
+  const bar = $('pickBar');
+  const show = !!selected && canPick();
+  bar.classList.toggle('on', show);
+  if (!show) return;
+  const cur = onClock(S);
+  const forSomeone = isHost() && cur !== myId();
+  $('pickLbl').innerHTML = `Draft <b>${esc(itemName(selected))}</b>${forSomeone ? ` for ${esc(pname(cur))}` : ''}?`;
+}
+
+/* ---------- room wiring ---------- */
+function enterRoom(code) {
+  CODE = code;
+  ME = LS.get('rw-draft:' + code);
+  $('vHome').hidden = true; $('vRoom').hidden = false;
+  $('jName').value = LS.get('rw-name') || '';
+  refresh().then(schedule);
+}
+
+$('inviteBtn').onclick = async () => {
+  const url = location.origin + location.pathname + '?room=' + CODE;
+  if (matchMedia('(hover:none)').matches && navigator.share) {
+    try { await navigator.share({ title: (S && S.title) || 'Snake draft', text: 'Join my draft on Rank Whatever', url }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(url); toast('Invite link copied! Send it to your friends.'); }
+  catch (_) { prompt('Copy this link:', url); }
+};
+
+$('joinBtn').onclick = async () => {
+  const name = $('jName').value.trim();
+  if (!name) { toast('Type your name first'); $('jName').focus(); return; }
+  LS.set('rw-name', name);
+  const j = await act({ action: 'join', name });
+  if (j && j.me) { ME = j.me; LS.set('rw-draft:' + CODE, ME); render(); toast("You're in! Wait for the host to start."); }
+};
+$('jName').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
+
+$('lobbyPlayers').addEventListener('click', e => {
+  const mv = e.target.closest('[data-mv]');
+  if (mv) {
+    const i = +mv.dataset.mv, d = +mv.dataset.d, o = S.order.slice();
+    [o[i], o[i + d]] = [o[i + d], o[i]];
+    act({ action: 'order', order: o });
+    return;
+  }
+  const k = e.target.closest('[data-kick]');
+  if (k && confirm(`Remove ${pname(k.dataset.kick)} from the draft?`)) act({ action: 'kick', playerId: k.dataset.kick });
+});
+$('shuffleBtn').onclick = () => act({ action: 'shuffle' }).then(j => { if (j) toast('Order shuffled 🎲'); });
+$('roundsSel').onchange = e => act({ action: 'settings', rounds: e.target.value || 0 });
+$('startBtn').onclick = () => {
+  if (S.players.length === 1 && !confirm("You're the only one here. Start anyway?")) return;
+  act({ action: 'start' });
+};
+
+$('search').addEventListener('input', renderAvail);
+$('avail').addEventListener('click', e => {
+  const b = e.target.closest('[data-item]');
+  if (!b) return;
+  if (!ME) { toast("You're just watching this draft"); return; }
+  if (!canPick()) { toast(`Hold on, it's ${pname(onClock(S))}'s turn`); return; }
+  selected = selected === b.dataset.item ? null : b.dataset.item;
+  renderAvail(); updatePickBar();
+});
+$('pickCancel').onclick = () => { selected = null; renderAvail(); updatePickBar(); };
+$('pickGo').onclick = async () => {
+  if (!selected || !canPick()) return;
+  const itemId = selected;
+  selected = null; updatePickBar();
+  const j = await act({ action: 'pick', itemId, playerId: myId(), key: ME && ME.key, at: S.picks.length });
+  if (j) { $('search').value = ''; renderAvail(); }
+};
+$('undoPickBtn').onclick = () => {
+  const last = S.picks[S.picks.length - 1];
+  if (last && confirm(`Undo ${pname(last.p)}'s pick of ${itemName(last.i)}?`)) act({ action: 'undo' });
+};
+
+$('copyResults').onclick = async () => {
+  const lines = [`${S.title || 'Snake draft'}: results`, ''];
+  S.order.forEach(id => lines.push(`${pname(id)}: ${teamOf(id).join(', ')}`));
+  const text = lines.join('\n');
+  try { await navigator.clipboard.writeText(text); toast('Results copied!'); }
+  catch (_) { prompt('Copy the results:', text); }
+};
+$('rankMine').onclick = () => {
+  const names = teamOf(myId());
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const items = {}, pool = [];
+  names.forEach(t => { const id = uid(); items[id] = { t }; pool.push(id); });
+  const tiers = [['S','#ff7f7f'],['A','#ffbf7f'],['B','#ffdf7f'],['C','#ffff7f'],['D','#bfff7f'],['F','#7fbfff']]
+    .map(([l, c]) => ({ id: uid(), l, c, items: [] }));
+  const state = { title: `${S.title || 'Draft'}: ${pname(myId())}'s team`, tiers, pool, items };
+  location.href = 'index.html#b=' + LZString.compressToEncodedURIComponent(JSON.stringify(state));
+};
+
+/* ---------- home wiring ---------- */
+function updateCount() {
+  const n = parseItems($('cItems').value).length;
+  $('cCount').textContent = n ? `· ${n}` : '';
+}
+$('cItems').addEventListener('input', updateCount);
+$('cName').value = LS.get('rw-name') || '';
+
+$('fromTier').onclick = () => {
+  const t = LS.get('rankwhatever:v1');
+  const names = t && t.items ? Object.values(t.items).map(it => (it.t || '').trim()).filter(Boolean) : [];
+  if (!names.length) { toast("Your tier list doesn't have any names yet (pictures without captions get skipped)", 4000); return; }
+  $('cItems').value = names.join('\n');
+  if (!$('cTitle').value && t.title) $('cTitle').value = t.title;
+  updateCount();
+  toast(`Added ${names.length} names from your tier list`);
+};
+Object.keys(STARTERS).forEach(name => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button'; b.textContent = name;
+  b.onclick = () => { $('cItems').value = STARTERS[name].join('\n'); if (!$('cTitle').value) $('cTitle').value = name; updateCount(); };
+  $('starters').append(b);
+});
+
+$('createBtn').onclick = async () => {
+  const name = $('cName').value.trim(), items = parseItems($('cItems').value);
+  if (!name) { toast('Type your name first'); $('cName').focus(); return; }
+  if (items.length < 2) { toast('Add at least 2 names to draft'); $('cItems').focus(); return; }
+  LS.set('rw-name', name);
+  const btn = $('createBtn');
+  btn.disabled = true; btn.textContent = 'Making your room…';
+  try {
+    const j = await api({ action: 'create', title: $('cTitle').value, name, items });
+    CODE = j.state.code; ME = j.me;
+    LS.set('rw-draft:' + CODE, ME);
+    history.replaceState(null, '', location.pathname + '?room=' + CODE);
+    applyState(j.state);
+    schedule();
+    toast('Room made! Hit "Copy invite link" and send it to your friends.', 4000);
+  } catch (e) { toast(e.message, 5000); }
+  finally { btn.disabled = false; btn.textContent = 'Create draft room'; }
+};
+
+$('goJoin').onclick = () => {
+  const c = cleanCode($('jCode').value);
+  if (c.length < 4) { toast('Type the room code'); return; }
+  history.pushState(null, '', location.pathname + '?room=' + c);
+  enterRoom(c);
+};
+$('jCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('goJoin').click(); });
+
+/* ---------- start ---------- */
+const startCode = cleanCode(new URLSearchParams(location.search).get('room'));
+if (startCode) enterRoom(startCode);
+window.addEventListener('popstate', () => location.reload());
+})();
+</script>
+</body>
+</html>
